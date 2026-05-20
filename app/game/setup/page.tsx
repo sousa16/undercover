@@ -3,10 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, Minus } from "lucide-react";
+import { ArrowLeft, Plus, X, Minus, Users, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { useGame } from "@/context/GameContext";
 import {
   defaultRoleCounts,
@@ -15,6 +16,12 @@ import {
 } from "@/lib/game-logic";
 import { supabase } from "@/lib/supabase";
 import { randomFrom } from "@/lib/utils";
+import {
+  type PlayerGroup,
+  listGroups,
+  saveGroup,
+  deleteGroup,
+} from "@/lib/groups";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -25,8 +32,17 @@ export default function SetupPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [groups, setGroups] = React.useState<PlayerGroup[]>([]);
+  const [saveOpen, setSaveOpen] = React.useState(false);
+  const [groupName, setGroupName] = React.useState("");
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
   const validNames = names.map((n) => n.trim()).filter(Boolean);
   const playerCount = validNames.length;
+
+  React.useEffect(() => {
+    setGroups(listGroups());
+  }, []);
 
   React.useEffect(() => {
     if (!customized) setCounts(defaultRoleCounts(playerCount));
@@ -49,6 +65,36 @@ export default function SetupPage() {
   function bump(key: keyof RoleCounts, delta: number) {
     setCustomized(true);
     setCounts((c) => ({ ...c, [key]: Math.max(0, c[key] + delta) }));
+  }
+
+  function loadGroup(g: PlayerGroup) {
+    setNames(g.players.length >= 3 ? [...g.players] : [...g.players, "", "", ""].slice(0, 3));
+    setError(null);
+  }
+
+  function removeGroup(id: string) {
+    deleteGroup(id);
+    setGroups(listGroups());
+  }
+
+  function openSave() {
+    if (validNames.length < 3) {
+      setError("Adiciona pelo menos 3 jogadores antes de guardar.");
+      return;
+    }
+    setSaveError(null);
+    setGroupName("");
+    setSaveOpen(true);
+  }
+
+  function confirmSave() {
+    try {
+      saveGroup(groupName, validNames);
+      setGroups(listGroups());
+      setSaveOpen(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Não foi possível guardar.");
+    }
   }
 
   async function start() {
@@ -90,10 +136,52 @@ export default function SetupPage() {
         <h1 className="text-xl font-semibold">New game</h1>
       </header>
 
-      <section className="space-y-2 mb-6">
-        <h2 className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2">
-          Players ({playerCount})
-        </h2>
+      {groups.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" />
+            Groups
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {groups.map((g) => (
+              <div
+                key={g.id}
+                className="group inline-flex items-center rounded-full bg-bg-elevated border border-bg-border overflow-hidden"
+              >
+                <button
+                  onClick={() => loadGroup(g)}
+                  className="pl-3 pr-2 py-1.5 text-sm text-zinc-200 hover:text-accent tap-target"
+                >
+                  {g.name}
+                  <span className="text-zinc-500 ml-1.5 text-xs">{g.players.length}</span>
+                </button>
+                <button
+                  onClick={() => removeGroup(g.id)}
+                  className="pr-2.5 pl-1 py-1.5 text-zinc-500 hover:text-danger tap-target"
+                  aria-label={`Delete group ${g.name}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-2 mb-4">
+        <div className="flex items-center justify-between mb-2 ml-1">
+          <h2 className="text-xs uppercase tracking-wider text-zinc-500">
+            Players ({playerCount})
+          </h2>
+          <button
+            onClick={openSave}
+            disabled={validNames.length < 3}
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-accent disabled:opacity-40 tap-target px-2 -mr-2"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            Save group
+          </button>
+        </div>
         {names.map((name, i) => (
           <div key={i} className="flex items-center gap-2">
             <Input
@@ -149,6 +237,41 @@ export default function SetupPage() {
       <Button size="lg" className="w-full mt-auto" onClick={start} disabled={loading}>
         {loading ? "Drawing a pair…" : "Start game"}
       </Button>
+
+      <Modal open={saveOpen} onClose={() => setSaveOpen(false)}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-accent-muted/30 border border-accent/30 flex items-center justify-center">
+            <Bookmark className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">Save group</h2>
+            <p className="text-zinc-500 text-xs">
+              {validNames.length} players: {validNames.join(", ")}
+            </p>
+          </div>
+        </div>
+        <Input
+          autoFocus
+          placeholder="Group name (e.g. Os Manos)"
+          value={groupName}
+          onChange={(e) => {
+            setGroupName(e.target.value);
+            setSaveError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") confirmSave();
+          }}
+        />
+        {saveError && <p className="text-danger text-sm pl-1 mt-2">{saveError}</p>}
+        <div className="flex gap-2 mt-4">
+          <Button variant="secondary" size="lg" className="flex-1" onClick={() => setSaveOpen(false)}>
+            Cancel
+          </Button>
+          <Button size="lg" className="flex-1" onClick={confirmSave} disabled={!groupName.trim()}>
+            Save
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
