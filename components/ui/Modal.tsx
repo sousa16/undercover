@@ -14,13 +14,14 @@ export function Modal({ open, onClose, children, className }: Props) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
         className={cn(
-          "w-full sm:max-w-md bg-bg-surface border border-bg-border",
-          "rounded-t-3xl sm:rounded-2xl p-6 animate-scale-in",
+          "w-full max-w-md bg-bg-surface border border-bg-border",
+          "rounded-2xl p-6 animate-scale-in",
+          "max-h-[calc(100dvh-2rem)] overflow-y-auto",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
