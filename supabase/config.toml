@@ -1,0 +1,10 @@
+# Supabase project config — used by the Supabase CLI and the GitHub integration.
+# Replace `project_id` with your project ref (Project Settings → General → Reference ID).
+project_id = "your-project-ref"
+
+[db]
+# Postgres version that Supabase projects run today.
+major_version = 15
+
+[db.migrations]
+schema_paths = []
