@@ -1,86 +1,93 @@
--- European Portuguese word pairs for the Undercover pool.
--- Run this in the Supabase SQL editor after 001_init.sql.
+-- European Portuguese word pairs for the Undercover pool — edgier edition.
+-- Wipes any previously seeded rows so this is the canonical pool on first
+-- deploy. Safe under the GitHub integration (runs once per project).
+
+delete from public.word_pairs;
 
 insert into public.word_pairs (word_civilian, word_undercover) values
-  -- Comida e bebida
+  -- Frutas (clássicos de Undercover — parecidos mas distintos)
+  ('Pera', 'Maçã'),
+  ('Banana', 'Pepino'),
+  ('Morango', 'Framboesa'),
+  ('Limão', 'Lima'),
+  ('Melancia', 'Melão'),
+  ('Pêssego', 'Alperce'),
+  ('Uva', 'Cereja'),
+  ('Laranja', 'Tangerina'),
+  ('Ananás', 'Manga'),
+
+  -- Comida (com sabor a Portugal)
   ('Bifana', 'Prego'),
-  ('Pastel de nata', 'Pastel de feijão'),
-  ('Bacalhau', 'Sardinha'),
   ('Francesinha', 'Cachorro'),
-  ('Caldo verde', 'Açorda'),
-  ('Vinho tinto', 'Vinho verde'),
-  ('Cerveja', 'Sangria'),
+  ('Pastel de nata', 'Bola de Berlim'),
+  ('Chamuça', 'Rissol'),
+  ('Croquete', 'Pastel de bacalhau'),
+  ('Mexilhão', 'Amêijoa'),
+  ('Polvo', 'Lula'),
+  ('Camarão', 'Lagostim'),
+  ('Sardinha', 'Carapau'),
+  ('Tremoços', 'Amendoins'),
+  ('Gomas', 'Chocolate'),
+
+  -- Bebidas (etílicas, porque é jogo de grupo)
+  ('Imperial', 'Caneca'),
+  ('Vinho do Porto', 'Vinho da Madeira'),
+  ('Ginjinha', 'Licor Beirão'),
+  ('Whisky', 'Vodka'),
+  ('Gin tónico', 'Caipirinha'),
+  ('Shot', 'Cocktail'),
   ('Sumol', 'Compal'),
-  ('Café', 'Chá'),
-  ('Galão', 'Meia de leite'),
-  ('Bola de Berlim', 'Donut'),
-  ('Queijo', 'Fiambre'),
 
-  -- Lugares
-  ('Praia', 'Piscina'),
-  ('Lisboa', 'Porto'),
-  ('Algarve', 'Madeira'),
-  ('Aldeia', 'Cidade'),
-  ('Pastelaria', 'Padaria'),
-  ('Tasca', 'Restaurante'),
-  ('Mercado', 'Supermercado'),
-  ('Esplanada', 'Café'),
+  -- Vida noturna
+  ('Discoteca', 'Bar'),
+  ('Ressaca', 'Bebedeira'),
+  ('Bairro Alto', 'Pink Street'),
 
-  -- Tecnologia e casa
-  ('Telemóvel', 'Tablet'),
-  ('Portátil', 'Computador'),
-  ('Auscultadores', 'Colunas'),
-  ('Frigorífico', 'Congelador'),
-  ('Fogão', 'Forno'),
+  -- Relacionamentos / namoro
+  ('Ficar', 'Namorar'),
+  ('Beijo', 'Linguado'),
+  ('Crush', 'Match'),
+  ('Tinder', 'Bumble'),
+  ('Curte', 'Engata'),
 
-  -- Desporto
-  ('Futebol', 'Futsal'),
+  -- Internet / redes sociais
+  ('TikTok', 'Instagram'),
+  ('Story', 'Reel'),
+  ('WhatsApp', 'Telegram'),
+  ('Netflix', 'HBO'),
+  ('Spotify', 'YouTube'),
+  ('Emoji', 'Sticker'),
+  ('Wifi', 'Dados móveis'),
+
+  -- Marcas
+  ('iPhone', 'Android'),
+  ('McDonald''s', 'Burger King'),
+  ('Coca-Cola', 'Pepsi'),
+  ('Nike', 'Adidas'),
+  ('TAP', 'Ryanair'),
+
+  -- Corpo / vaidade
+  ('Bigode', 'Barba'),
+  ('Sobrancelha', 'Pestana'),
+  ('Tatuagem', 'Piercing'),
+  ('Botox', 'Preenchimento'),
+
+  -- Animais (menos batidos)
+  ('Furão', 'Hamster'),
+  ('Tubarão', 'Golfinho'),
+
+  -- Vida de estudante
+  ('Sebenta', 'Manual'),
+  ('Praxe', 'Caloiro'),
+  ('Erasmus', 'Interrail'),
+
+  -- Desporto / ginásio
+  ('Crossfit', 'Ginásio'),
   ('Padel', 'Ténis'),
   ('Surf', 'Bodyboard'),
-  ('Corrida', 'Caminhada'),
-  ('Natação', 'Mergulho'),
 
-  -- Transportes
-  ('Carro', 'Mota'),
-  ('Comboio', 'Metro'),
-  ('Autocarro', 'Camioneta'),
-  ('Avião', 'Helicóptero'),
-  ('Barco', 'Iate'),
-
-  -- Roupa
-  ('Camisola', 'Camisa'),
-  ('Calças', 'Calções'),
-  ('Sapatos', 'Sapatilhas'),
-  ('Casaco', 'Blusão'),
-  ('Chapéu', 'Boné'),
-
-  -- Animais
-  ('Cão', 'Gato'),
-  ('Galinha', 'Pato'),
-  ('Tubarão', 'Golfinho'),
-  ('Cavalo', 'Burro'),
-
-  -- Cultura e entretenimento
-  ('Cinema', 'Teatro'),
-  ('Livro', 'Revista'),
-  ('Festa', 'Arraial'),
-  ('Casamento', 'Batizado'),
-  ('Fado', 'Pimba'),
-  ('Santo António', 'São João'),
+  -- Cultura PT
+  ('Quim Barreiros', 'Tony Carreira'),
   ('Benfica', 'Sporting'),
-
-  -- Estações e datas
-  ('Natal', 'Páscoa'),
-  ('Verão', 'Primavera'),
-  ('Carnaval', 'Halloween'),
-
-  -- Natureza
-  ('Sol', 'Lua'),
-  ('Chuva', 'Nevoeiro'),
-  ('Pinheiro', 'Sobreiro'),
-
-  -- Profissões
-  ('Médico', 'Enfermeiro'),
-  ('Polícia', 'Bombeiro'),
-  ('Professor', 'Explicador')
+  ('Cristiano Ronaldo', 'Messi')
 on conflict do nothing;
