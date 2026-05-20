@@ -3,7 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, Minus, Users, Bookmark, Layers } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Minus,
+  Users,
+  Bookmark,
+  Layers,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
@@ -40,6 +50,9 @@ export default function SetupPage() {
   const [groupName, setGroupName] = React.useState("");
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [savingGroup, setSavingGroup] = React.useState(false);
+  const [loadedGroupId, setLoadedGroupId] = React.useState<string | null>(null);
+  const [groupToDelete, setGroupToDelete] = React.useState<PlayerGroup | null>(null);
+  const [deletingGroup, setDeletingGroup] = React.useState(false);
 
   const [selectedPacks, setSelectedPacks] = React.useState<string[]>(PACK_IDS);
   const [packsHydrated, setPacksHydrated] = React.useState(false);
@@ -98,16 +111,19 @@ export default function SetupPage() {
 
   function setName(i: number, v: string) {
     setNames((arr) => arr.map((n, idx) => (idx === i ? v : n)));
+    setLoadedGroupId(null);
   }
 
   function addPlayer() {
     if (names.length >= 16) return;
     setNames((arr) => [...arr, ""]);
+    setLoadedGroupId(null);
   }
 
   function removePlayer(i: number) {
     if (names.length <= 3) return;
     setNames((arr) => arr.filter((_, idx) => idx !== i));
+    setLoadedGroupId(null);
   }
 
   function bump(key: keyof RoleCounts, delta: number) {
@@ -115,19 +131,33 @@ export default function SetupPage() {
     setCounts((c) => ({ ...c, [key]: Math.max(0, c[key] + delta) }));
   }
 
-  function loadGroup(g: PlayerGroup) {
+  function toggleGroup(g: PlayerGroup) {
+    if (loadedGroupId === g.id) {
+      // Already loaded → just unmark, keep names so the host can tweak.
+      setLoadedGroupId(null);
+      return;
+    }
     setNames(g.players.length >= 3 ? [...g.players] : [...g.players, "", "", ""].slice(0, 3));
+    setLoadedGroupId(g.id);
     setError(null);
   }
 
-  async function removeGroup(id: string) {
+  async function confirmDeleteGroup() {
+    if (!groupToDelete || deletingGroup) return;
+    const target = groupToDelete;
+    setDeletingGroup(true);
     const prev = groups;
-    setGroups((gs) => (gs ? gs.filter((g) => g.id !== id) : gs));
+    setGroups((gs) => (gs ? gs.filter((g) => g.id !== target.id) : gs));
+    if (loadedGroupId === target.id) setLoadedGroupId(null);
     try {
-      await deleteGroup(id);
+      await deleteGroup(target.id);
+      setGroupToDelete(null);
     } catch (e) {
       setGroups(prev);
       setError(e instanceof Error ? e.message : "Could not delete group.");
+      setGroupToDelete(null);
+    } finally {
+      setDeletingGroup(false);
     }
   }
 
@@ -203,29 +233,57 @@ export default function SetupPage() {
           <h2 className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2 flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5" />
             Groups
+            <span className="ml-auto normal-case tracking-normal text-zinc-600 text-[11px]">
+              Tap to load · tap again to deselect
+            </span>
           </h2>
           <div className="flex flex-wrap gap-2">
-            {groups.map((g) => (
-              <div
-                key={g.id}
-                className="group inline-flex items-center rounded-full bg-bg-elevated border border-bg-border overflow-hidden"
-              >
-                <button
-                  onClick={() => loadGroup(g)}
-                  className="pl-3 pr-2 py-1.5 text-sm text-zinc-200 hover:text-accent tap-target"
+            {groups.map((g) => {
+              const isLoaded = loadedGroupId === g.id;
+              return (
+                <div
+                  key={g.id}
+                  className={[
+                    "inline-flex items-center rounded-full border overflow-hidden transition-all",
+                    isLoaded
+                      ? "bg-accent-muted/30 border-accent shadow-[0_0_0_3px_rgba(124,92,255,0.15)]"
+                      : "bg-bg-elevated border-bg-border",
+                  ].join(" ")}
                 >
-                  {g.name}
-                  <span className="text-zinc-500 ml-1.5 text-xs">{g.players.length}</span>
-                </button>
-                <button
-                  onClick={() => removeGroup(g.id)}
-                  className="pr-2.5 pl-1 py-1.5 text-zinc-500 hover:text-danger tap-target"
-                  aria-label={`Delete group ${g.name}`}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
+                  <button
+                    onClick={() => toggleGroup(g)}
+                    className={[
+                      "pl-3.5 pr-2.5 py-1.5 text-sm tap-target inline-flex items-center gap-1.5",
+                      isLoaded ? "text-zinc-50" : "text-zinc-200 hover:text-accent",
+                    ].join(" ")}
+                    aria-pressed={isLoaded}
+                  >
+                    {isLoaded && <Check className="w-3.5 h-3.5 text-accent" />}
+                    <span>{g.name}</span>
+                    <span
+                      className={[
+                        "text-xs",
+                        isLoaded ? "text-zinc-300" : "text-zinc-500",
+                      ].join(" ")}
+                    >
+                      {g.players.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setGroupToDelete(g)}
+                    className={[
+                      "pr-2.5 pl-2 py-1.5 tap-target border-l transition-colors",
+                      isLoaded
+                        ? "border-accent/40 text-zinc-300 hover:text-danger"
+                        : "border-bg-border text-zinc-500 hover:text-danger",
+                    ].join(" ")}
+                    aria-label={`Delete group ${g.name}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -370,6 +428,47 @@ export default function SetupPage() {
             {savingGroup ? "Saving…" : "Save"}
           </Button>
         </div>
+      </Modal>
+
+      <Modal open={!!groupToDelete} onClose={() => !deletingGroup && setGroupToDelete(null)}>
+        {groupToDelete && (
+          <>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-danger/15 border border-danger/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-danger" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Delete group?</h2>
+                <p className="text-zinc-500 text-xs">
+                  &quot;{groupToDelete.name}&quot; — {groupToDelete.players.length} players
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 text-sm mb-5">
+              Removes it for everyone in the group. The names already in the inputs stay.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="flex-1"
+                onClick={() => setGroupToDelete(null)}
+                disabled={deletingGroup}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="lg"
+                className="flex-1"
+                onClick={confirmDeleteGroup}
+                disabled={deletingGroup}
+              >
+                {deletingGroup ? "Deleting…" : "Delete"}
+              </Button>
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   );
