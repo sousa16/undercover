@@ -1,41 +1,54 @@
+import { supabase } from "@/lib/supabase";
+
 export type PlayerGroup = {
   id: string;
   name: string;
   players: string[];
-  createdAt: number;
+  createdAt: string;
 };
 
-const KEY = "uc_groups_v1";
+type Row = {
+  id: string;
+  name: string;
+  players: unknown;
+  created_at: string;
+};
 
-export function listGroups(): PlayerGroup[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function fromRow(row: Row): PlayerGroup {
+  return {
+    id: row.id,
+    name: row.name,
+    players: Array.isArray(row.players)
+      ? (row.players.filter((p) => typeof p === "string") as string[])
+      : [],
+    createdAt: row.created_at,
+  };
 }
 
-export function saveGroup(name: string, players: string[]): PlayerGroup {
+export async function listGroups(): Promise<PlayerGroup[]> {
+  const { data, error } = await supabase
+    .from("player_groups")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as Row[] | null ?? []).map(fromRow);
+}
+
+export async function saveGroup(name: string, players: string[]): Promise<PlayerGroup> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("O grupo precisa de um nome.");
   const validPlayers = players.map((p) => p.trim()).filter(Boolean);
   if (validPlayers.length < 3) throw new Error("Precisa de pelo menos 3 jogadores.");
-  const group: PlayerGroup = {
-    id: `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    name: trimmed,
-    players: validPlayers,
-    createdAt: Date.now(),
-  };
-  const groups = [...listGroups(), group];
-  window.localStorage.setItem(KEY, JSON.stringify(groups));
-  return group;
+  const { data, error } = await supabase
+    .from("player_groups")
+    .insert({ name: trimmed, players: validPlayers })
+    .select()
+    .single();
+  if (error) throw error;
+  return fromRow(data as Row);
 }
 
-export function deleteGroup(id: string): void {
-  const groups = listGroups().filter((g) => g.id !== id);
-  window.localStorage.setItem(KEY, JSON.stringify(groups));
+export async function deleteGroup(id: string): Promise<void> {
+  const { error } = await supabase.from("player_groups").delete().eq("id", id);
+  if (error) throw error;
 }

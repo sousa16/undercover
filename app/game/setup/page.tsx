@@ -32,17 +32,27 @@ export default function SetupPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const [groups, setGroups] = React.useState<PlayerGroup[]>([]);
+  const [groups, setGroups] = React.useState<PlayerGroup[] | null>(null);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [groupName, setGroupName] = React.useState("");
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [savingGroup, setSavingGroup] = React.useState(false);
 
   const validNames = names.map((n) => n.trim()).filter(Boolean);
   const playerCount = validNames.length;
 
-  React.useEffect(() => {
-    setGroups(listGroups());
+  const refreshGroups = React.useCallback(async () => {
+    try {
+      setGroups(await listGroups());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load groups.");
+      setGroups([]);
+    }
   }, []);
+
+  React.useEffect(() => {
+    refreshGroups();
+  }, [refreshGroups]);
 
   React.useEffect(() => {
     if (!customized) setCounts(defaultRoleCounts(playerCount));
@@ -72,9 +82,15 @@ export default function SetupPage() {
     setError(null);
   }
 
-  function removeGroup(id: string) {
-    deleteGroup(id);
-    setGroups(listGroups());
+  async function removeGroup(id: string) {
+    const prev = groups;
+    setGroups((gs) => (gs ? gs.filter((g) => g.id !== id) : gs));
+    try {
+      await deleteGroup(id);
+    } catch (e) {
+      setGroups(prev);
+      setError(e instanceof Error ? e.message : "Could not delete group.");
+    }
   }
 
   function openSave() {
@@ -87,13 +103,17 @@ export default function SetupPage() {
     setSaveOpen(true);
   }
 
-  function confirmSave() {
+  async function confirmSave() {
+    if (savingGroup) return;
+    setSavingGroup(true);
     try {
-      saveGroup(groupName, validNames);
-      setGroups(listGroups());
+      const newGroup = await saveGroup(groupName, validNames);
+      setGroups((gs) => (gs ? [newGroup, ...gs] : [newGroup]));
       setSaveOpen(false);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Não foi possível guardar.");
+    } finally {
+      setSavingGroup(false);
     }
   }
 
@@ -136,7 +156,7 @@ export default function SetupPage() {
         <h1 className="text-xl font-semibold">New game</h1>
       </header>
 
-      {groups.length > 0 && (
+      {groups && groups.length > 0 && (
         <section className="mb-6">
           <h2 className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2 flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5" />
@@ -264,11 +284,22 @@ export default function SetupPage() {
         />
         {saveError && <p className="text-danger text-sm pl-1 mt-2">{saveError}</p>}
         <div className="flex gap-2 mt-4">
-          <Button variant="secondary" size="lg" className="flex-1" onClick={() => setSaveOpen(false)}>
+          <Button
+            variant="secondary"
+            size="lg"
+            className="flex-1"
+            onClick={() => setSaveOpen(false)}
+            disabled={savingGroup}
+          >
             Cancel
           </Button>
-          <Button size="lg" className="flex-1" onClick={confirmSave} disabled={!groupName.trim()}>
-            Save
+          <Button
+            size="lg"
+            className="flex-1"
+            onClick={confirmSave}
+            disabled={!groupName.trim() || savingGroup}
+          >
+            {savingGroup ? "Saving…" : "Save"}
           </Button>
         </div>
       </Modal>
