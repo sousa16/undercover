@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase, type WordPair } from "@/lib/supabase";
 import { adminAuthenticate, adminSignOut, isAdminAuthed } from "@/lib/auth";
+import { PACKS, packLabel, DEFAULT_PACK_ID } from "@/lib/packs";
 
 const UNDO_TIMEOUT_MS = 6000;
 
@@ -83,6 +84,7 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editCiv, setEditCiv] = React.useState("");
   const [editUnd, setEditUnd] = React.useState("");
+  const [editPack, setEditPack] = React.useState<string>(DEFAULT_PACK_ID);
   const [editError, setEditError] = React.useState<string | null>(null);
 
   const [recentlyDeleted, setRecentlyDeleted] = React.useState<WordPair | null>(null);
@@ -112,6 +114,7 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
     setEditingId(row.id);
     setEditCiv(row.word_civilian);
     setEditUnd(row.word_undercover);
+    setEditPack(row.pack ?? DEFAULT_PACK_ID);
     setEditError(null);
   }
 
@@ -119,6 +122,7 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
     setEditingId(null);
     setEditCiv("");
     setEditUnd("");
+    setEditPack(DEFAULT_PACK_ID);
     setEditError(null);
   }
 
@@ -136,7 +140,7 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
     setBusyId(id);
     const { error } = await supabase
       .from("word_pairs")
-      .update({ word_civilian: civ, word_undercover: und })
+      .update({ word_civilian: civ, word_undercover: und, pack: editPack })
       .eq("id", id);
     setBusyId(null);
     if (error) {
@@ -144,7 +148,13 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
       return;
     }
     setRows((r) =>
-      r ? r.map((x) => (x.id === id ? { ...x, word_civilian: civ, word_undercover: und } : x)) : r,
+      r
+        ? r.map((x) =>
+            x.id === id
+              ? { ...x, word_civilian: civ, word_undercover: und, pack: editPack }
+              : x,
+          )
+        : r,
     );
     cancelEdit();
   }
@@ -175,6 +185,7 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
       id: row.id,
       word_civilian: row.word_civilian,
       word_undercover: row.word_undercover,
+      pack: row.pack,
       created_at: row.created_at,
     });
     if (error) {
@@ -242,6 +253,26 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
                 placeholder="Undercover word"
                 className="h-10"
               />
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {PACKS.map((p) => {
+                  const on = editPack === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setEditPack(p.id)}
+                      className={[
+                        "px-2.5 py-1 rounded-full text-xs tap-target transition-colors",
+                        on
+                          ? "bg-accent-muted/30 border border-accent text-zinc-50"
+                          : "bg-bg-elevated border border-bg-border text-zinc-400 hover:text-zinc-200",
+                      ].join(" ")}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
               {editError && <p className="text-danger text-xs pl-1">{editError}</p>}
               <div className="flex gap-2 pt-1">
                 <Button
@@ -275,8 +306,12 @@ function AdminInner({ onSignOut }: { onSignOut: () => void }) {
                   {row.word_civilian} <span className="text-zinc-600 mx-1">·</span>{" "}
                   <span className="text-accent">{row.word_undercover}</span>
                 </div>
-                <div className="text-zinc-600 text-xs">
-                  {new Date(row.created_at).toLocaleDateString()}
+                <div className="text-zinc-600 text-xs flex items-center gap-2">
+                  <span className="uppercase tracking-wider text-[10px] text-zinc-500">
+                    {packLabel(row.pack ?? DEFAULT_PACK_ID)}
+                  </span>
+                  <span className="text-zinc-700">·</span>
+                  <span>{new Date(row.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               <button

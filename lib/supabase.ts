@@ -17,5 +17,6 @@ export type WordPair = {
   id: string;
   word_civilian: string;
   word_undercover: string;
+  pack: string;
   created_at: string;
 };

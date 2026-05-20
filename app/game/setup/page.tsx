@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, Minus, Users, Bookmark } from "lucide-react";
+import { ArrowLeft, Plus, X, Minus, Users, Bookmark, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
@@ -22,6 +22,9 @@ import {
   saveGroup,
   deleteGroup,
 } from "@/lib/groups";
+import { PACKS, PACK_IDS } from "@/lib/packs";
+
+const PACKS_STORAGE_KEY = "uc_selected_packs_v1";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -38,6 +41,9 @@ export default function SetupPage() {
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [savingGroup, setSavingGroup] = React.useState(false);
 
+  const [selectedPacks, setSelectedPacks] = React.useState<string[]>(PACK_IDS);
+  const [packsHydrated, setPacksHydrated] = React.useState(false);
+
   const validNames = names.map((n) => n.trim()).filter(Boolean);
   const playerCount = validNames.length;
 
@@ -53,6 +59,38 @@ export default function SetupPage() {
   React.useEffect(() => {
     refreshGroups();
   }, [refreshGroups]);
+
+  React.useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PACKS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
+          const filtered = parsed.filter((id) => PACK_IDS.includes(id));
+          if (filtered.length > 0) setSelectedPacks(filtered);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setPacksHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!packsHydrated) return;
+    try {
+      window.localStorage.setItem(PACKS_STORAGE_KEY, JSON.stringify(selectedPacks));
+    } catch {
+      // ignore
+    }
+  }, [selectedPacks, packsHydrated]);
+
+  function togglePack(id: string) {
+    setSelectedPacks((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
+    );
+    setError(null);
+  }
 
   React.useEffect(() => {
     if (!customized) setCounts(defaultRoleCounts(playerCount));
@@ -128,16 +166,20 @@ export default function SetupPage() {
     }
     const issue = validateRoleCounts(counts, validNames.length);
     if (issue) return setError(issue);
+    if (selectedPacks.length === 0) return setError("Pick at least one pack.");
 
     setLoading(true);
-    const { data, error } = await supabase.from("word_pairs").select("*");
+    const { data, error } = await supabase
+      .from("word_pairs")
+      .select("*")
+      .in("pack", selectedPacks);
     if (error) {
       setLoading(false);
       return setError(error.message);
     }
     if (!data || data.length === 0) {
       setLoading(false);
-      return setError("No word pairs in the pool. Add some via Suggest.");
+      return setError("No word pairs in the selected packs.");
     }
     const pair = randomFrom(data);
     startGame(validNames, counts, {
@@ -226,6 +268,32 @@ export default function SetupPage() {
           <Plus className="w-4 h-4" />
           Add player
         </button>
+      </section>
+
+      <section className="mb-6">
+        <h2 className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2 flex items-center gap-1.5">
+          <Layers className="w-3.5 h-3.5" />
+          Packs
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {PACKS.map((p) => {
+            const on = selectedPacks.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                onClick={() => togglePack(p.id)}
+                className={[
+                  "px-3.5 py-1.5 rounded-full text-sm tap-target transition-all",
+                  on
+                    ? "bg-accent-muted/30 border border-accent text-zinc-50 shadow-[0_0_0_3px_rgba(124,92,255,0.15)]"
+                    : "bg-bg-elevated border border-bg-border text-zinc-400 hover:text-zinc-200",
+                ].join(" ")}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="mb-8">

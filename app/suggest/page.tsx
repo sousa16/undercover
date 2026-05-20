@@ -6,10 +6,12 @@ import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
+import { PACKS, DEFAULT_PACK_ID } from "@/lib/packs";
 
 export default function SuggestPage() {
   const [civilian, setCivilian] = React.useState("");
   const [undercover, setUndercover] = React.useState("");
+  const [pack, setPack] = React.useState<string>(DEFAULT_PACK_ID);
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function SuggestPage() {
     setSubmitting(true);
     const { error } = await supabase
       .from("word_pairs")
-      .insert({ word_civilian: a, word_undercover: b });
+      .insert({ word_civilian: a, word_undercover: b, pack });
     setSubmitting(false);
     if (error) {
       setError(error.message);
@@ -50,7 +52,7 @@ export default function SuggestPage() {
         Two words that feel close but distinct. Civilians get the first, undercovers the second.
       </p>
 
-      <form onSubmit={submit} className="space-y-3">
+      <form onSubmit={submit} className="space-y-4">
         <div>
           <label className="text-xs uppercase tracking-wider text-zinc-500 ml-1">
             Civilian word
@@ -71,6 +73,32 @@ export default function SuggestPage() {
             placeholder="e.g. Tablet"
             onChange={(e) => setUndercover(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="text-xs uppercase tracking-wider text-zinc-500 ml-1 mb-2 block">
+            Pack
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {PACKS.map((p) => {
+              const on = pack === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPack(p.id)}
+                  className={[
+                    "px-3.5 py-1.5 rounded-full text-sm tap-target transition-all",
+                    on
+                      ? "bg-accent-muted/30 border border-accent text-zinc-50 shadow-[0_0_0_3px_rgba(124,92,255,0.15)]"
+                      : "bg-bg-elevated border border-bg-border text-zinc-400 hover:text-zinc-200",
+                  ].join(" ")}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {error && <p className="text-danger text-sm pl-1">{error}</p>}
